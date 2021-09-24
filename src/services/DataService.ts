@@ -1,0 +1,19 @@
+import { AuthorsResponse } from '../types'
+
+export const getArticles = (pageNumber: number) : Promise<AuthorsResponse> => {
+    return new Promise((resolve, reject) => {
+        fetch(`https://jsonmock.hackerrank.com/api/articles?${pageNumber}`)
+            .then(response => response.json())
+            .then(resolve)
+            .catch(reject)
+        })
+}
+
+export const getArticlesByAuthorName = (pageNumber: number, authorName: string) : Promise<AuthorsResponse> => {
+    return new Promise((resolve, reject) => {
+        fetch(`https://jsonmock.hackerrank.com/api/articles?${pageNumber}&author=${authorName}`)
+            .then(response => response.json())
+            .then(resolve)
+            .catch(reject)
+        })
+}
