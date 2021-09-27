@@ -1,42 +1,49 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState } from 'react'
 import { getArticles } from '../../services/DataService'
 import { Article } from '../../types'
 
 export const useAuthorsList = () => {
     const [authors, setAuthors] = useState<{[key: string]: Article[]}>({})
-    const pageNumberRef = useRef(1)
-    const authorsRef = useRef<{[key: string]: Article[]}>({})
+
     useEffect(() => {
         getArticlesList()
     }, [])
 
     const getArticlesList = () => {
-        getArticles(pageNumberRef.current)
-            .then(response => {
-                saveAuthors(response.data)
-                
-                const nextPage = pageNumberRef.current + 1
-                if(nextPage <= response.total_pages) {
-                    pageNumberRef.current = nextPage
-                    getArticlesList()
+        getArticles(1)
+            .then(firstPageResponse => { 
+                if(firstPageResponse.total_pages > 1) {
+                    Promise.all([...Array(firstPageResponse.total_pages - 1).keys()].map(
+                        (_, index) => getArticles(index + 2)
+                    )).then(allResponses => {
+                        let allResponsesArticles = [...firstPageResponse.data]
+                        allResponses.map(response => {
+                            allResponsesArticles = [...allResponsesArticles, ...response.data]
+                        })
+                        saveArticles(allResponsesArticles)
+                    }).catch(error => {
+                        console.warn(error)
+                    })
                 } else {
-                    setAuthors(authorsRef.current)
+                    saveArticles(firstPageResponse.data)
                 }
             })
             .catch(error => console.warn(error))
     }
 
-    const saveAuthors = (articles: Article[]) => {
-        let newAuthors = {...authors}
+    const saveArticles = (articles: Article[]) => {
+        let newAuthors: {[key: string]: Article[]} = {}
 
         articles.map(article => {
-            if(newAuthors[article.author] !== null && newAuthors[article.author] !== undefined) {
-                newAuthors[article.author].push(article)
+            const author = newAuthors[article.author]
+            if(author !== undefined) {
+                newAuthors[article.author] = [...newAuthors[article.author], article]
             } else {
                 newAuthors[article.author] = [article]
             }
         })
-        authorsRef.current = newAuthors
+            
+        setAuthors(newAuthors)
     }
 
     const isEvenNumber = (number: number) => {

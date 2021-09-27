@@ -5,23 +5,28 @@ import { Article } from '../../types'
 
 export const useBooksList = (authorName: string) => {
     const [titles, setTitles] = useState<string[]>([])
-    const pageNumberRef = useRef(1)
-    const titlesRef = useRef<string[]>([])
+
     useEffect(() => {
         getArticlesList()
     }, [])
 
     const getArticlesList = () => {
-        getArticlesByAuthorName(pageNumberRef.current, authorName)
-            .then(response => {
-                saveTitles(response.data)
-
-                const nextPage = pageNumberRef.current + 1
-                if(nextPage <= response.total_pages) {
-                    pageNumberRef.current = nextPage
-                    getArticlesList()
+        getArticlesByAuthorName(1, authorName)
+            .then(firstPageResponse => { 
+                if(firstPageResponse.total_pages > 1) {
+                    Promise.all([...Array(firstPageResponse.total_pages - 1).keys()].map(
+                        (_, index) => getArticlesByAuthorName(index + 2, authorName)
+                    )).then(allResponses => {
+                        let allResponsesArticles = [...firstPageResponse.data]
+                        allResponses.map(response => {
+                            allResponsesArticles = [...allResponsesArticles, ...response.data]
+                        })
+                        saveTitles(allResponsesArticles)
+                    }).catch(error => {
+                        console.warn(error)
+                    })
                 } else {
-                    setTitles(titlesRef.current)
+                    saveTitles(firstPageResponse.data)
                 }
             })
             .catch(error => console.warn(error))
@@ -38,7 +43,7 @@ export const useBooksList = (authorName: string) => {
                 newTitles.push('NA')
             }
         })
-        titlesRef.current = newTitles
+        setTitles(newTitles)
     }
 
     return {
